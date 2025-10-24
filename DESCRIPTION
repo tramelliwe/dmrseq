@@ -1,4 +1,4 @@
-Package: dmrseq
+Package: dmrseq.tweaked
 Type: Package
 Title: Detection and inference of differentially methylated regions 
   from Whole Genome Bisulfite Sequencing 

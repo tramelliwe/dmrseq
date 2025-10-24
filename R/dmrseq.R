@@ -105,6 +105,17 @@
 #'  looped through one chromosome at a time. When pairing up multiple 
 #'  chromosomes per chunk, sizes (in terms of numbers of CpGs) will be taken
 #'  into consideration to balance the sizes of each chunk.
+#' @param candidates Optional. If provided, should be either a data.frame in
+#'  the same format that \code{bumphunt()} returns, or a \code{GRanges} with
+#'  the same metadata columns. If a \code{GRanges} includes an 'index'
+#'  metadata column (an \code{IRanges} giving the first/last CpG indices for
+#'  each region) those will be taken as \code{indexStart}/\code{indexEnd}.
+#'  When \code{candidates} is provided, automatic detection via \code{bumphunt}
+#'  is skipped and the supplied regions are used for downstream scoring and
+#'  permutation inference. This is intended for advanced usage only; the
+#'  supplied candidates must have the same columns used downstream (e.g.
+#'  \code{L}, \code{area}, \code{stat}, or be compatible so that \code{stat}
+#'  can be computed).
 #' @return a \code{GRanges} object that contains the results of the inference. 
 #'    The object contains one row for each candidate region, sorted by q-value
 #'    and then chromosome. The standard 
@@ -173,7 +184,8 @@ dmrseq <- function(bs, testCovariate, adjustCovariate = NULL, cutoff = 0.1,
                    maxPerms = 10, matchCovariate = NULL, 
                    BPPARAM = bpparam(), stat = "stat", 
                    block = FALSE, blockSize = 5000,
-                   chrsPerChunk = 1) {
+                   chrsPerChunk = 1,
+                   candidates = NULL) {
     
     stopifnot(is(bs, "BSseq"))
     
@@ -451,17 +463,53 @@ dmrseq <- function(bs, testCovariate, adjustCovariate = NULL, cutoff = 0.1,
     message("Computing on ", chrsPerChunk, 
             " chromosome(s) at a time.\n")
     
-    message("Detecting candidate regions with coefficient larger than ",
-                   unique(abs(cutoff)), 
-           " in magnitude.")
-    OBS <- bumphunt(bs=bs, design = design, 
-                    coeff = coeff, coeff.adj = coeff.adj, minInSpan = minInSpan,
-                    minNumRegion = minNumRegion, cutoff = cutoff, 
-                    maxGap = maxGap, maxGapSmooth = maxGapSmooth, 
-                    smooth = smooth, bpSpan = bpSpan, verbose = verbose, 
-                    parallel = parallel, block = block, blockSize = blockSize,
-                    chrsPerChunk = chrsPerChunk, fact = fact,
-                    adjustCovariate = adjustCovariate)
+    # If user supplied candidates, use them; otherwise detect with bumphunt
+    if (is.null(candidates)) {
+      message("Detecting candidate regions with coefficient larger than ",
+              unique(abs(cutoff)), 
+              " in magnitude.")
+      OBS <- bumphunt(bs=bs, design = design, 
+                      coeff = coeff, coeff.adj = coeff.adj, minInSpan = minInSpan,
+                      minNumRegion = minNumRegion, cutoff = cutoff, 
+                      maxGap = maxGap, maxGapSmooth = maxGapSmooth, 
+                      smooth = smooth, bpSpan = bpSpan, verbose = verbose, 
+                      parallel = parallel, block = block, blockSize = blockSize,
+                      chrsPerChunk = chrsPerChunk, fact = fact,
+                      adjustCovariate = adjustCovariate)
+    } else {
+      message("Using user-supplied candidate regions (skipping bumphunt detection).")
+      # Accept GRanges or data.frame. Convert GRanges to data.frame and
+      # require indexStart/indexEnd to exist (or 'index' IRanges metadata).
+      if (is(candidates, "GRanges")) {
+        cand.df <- as.data.frame(candidates)
+        # If metadata column 'index' exists as an IRanges, extract starts/ends
+        if ("index" %in% names(S4Vectors::mcols(candidates))) {
+          idx <- candidates$index
+          if (is(idx, "IRanges")) {
+            cand.df$indexStart <- start(idx)
+            cand.df$indexEnd <- end(idx)
+          } else {
+            stop("GRanges metadata 'index' must be an IRanges giving CpG indices.")
+          }
+        }
+        OBS <- cand.df
+      } else if (is.data.frame(candidates)) {
+        OBS <- candidates
+      } else {
+        stop("candidates must be either a GRanges or a data.frame")
+      }
+      # Basic checks: need indexStart/indexEnd for reconstruction later
+      if (!all(c("indexStart", "indexEnd") %in% colnames(OBS))) {
+        stop("User-supplied candidates must include 'indexStart' and 'indexEnd' columns (or provide 'index' IRanges in GRanges).")
+      }
+      # also require seqnames/start/end to be present for GRanges conversion
+      if (!all(c("chr", "start", "end") %in% colnames(OBS))) {
+        # try to map typical column names if present
+        if (!all(c("chr", "start", "end") %in% colnames(OBS))) {
+          stop("User-supplied candidates must include 'chr', 'start', and 'end' columns (or be a GRanges).")
+        }
+      }
+    }
    
     # check that at least one candidate region was found; if there were none 
     # there is no need to go on to compute permutation tests...
