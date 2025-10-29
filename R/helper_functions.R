@@ -145,7 +145,7 @@ bumphunt <- function(bs,
     cutoff = NULL, maxGap = 1000, maxGapSmooth = 2500, smooth = FALSE, 
     bpSpan = 1000, verbose = TRUE, parallel = FALSE, block = FALSE,
     blockSize = 5000, chrsPerChunk = 1, fact = FALSE, 
-    adjustCovariate = NULL, ...) {
+    adjustCovariate = NULL, candidates_index = NULL, ...) {
     
     # calculate smoothing span from minInSpan
     bpSpan2 <- NULL
@@ -286,7 +286,7 @@ bumphunt <- function(bs,
         coeff.adj = coeff.adj,
         verbose = verbose, parallel = parallel,
         pDat=pData(bs), block = block, blockSize = blockSize, fact = fact,
-        adjustCovariate = adjustCovariate))
+        adjustCovariate = adjustCovariate, candidates_index = candidates_index))
     }
     
     if (length(tab) == 0) {
@@ -466,7 +466,9 @@ regionScanner <- function(meth.mat = meth.mat, cov.mat = cov.mat, pos = pos,
     maxGap = 300, cutoff = quantile(abs(x), 0.99), assumeSorted = FALSE, 
     verbose = verbose, design = design, coeff = coeff, coeff.adj = coeff.adj,
     parallel = parallel, pDat, block, blockSize, fact = fact, 
-    adjustCovariate = NULL) {
+    adjustCovariate = NULL, candidates_index = NULL) {
+  
+  if (is.null(candidates_index)) {
     if (any(is.na(x[ind]))) {
        message(sum(is.na(x[ind]))," CpG(s) excluded due to zero coverage. ",
               appendLF = FALSE)
@@ -617,6 +619,10 @@ regionScanner <- function(meth.mat = meth.mat, cov.mat = cov.mat, pos = pos,
       message("No candidates found. ")
       return(NULL)
     }
+  
+  } else{
+    Indexes <- candidates_index
+  }
   
     asin.gls.cov <- function(ix, design, coeff, 
         correlation = corAR1(form = ~1 |sample), 

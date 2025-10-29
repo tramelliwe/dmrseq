@@ -173,7 +173,7 @@ dmrseq <- function(bs, testCovariate, adjustCovariate = NULL, cutoff = 0.1,
                    maxPerms = 10, matchCovariate = NULL, 
                    BPPARAM = bpparam(), stat = "stat", 
                    block = FALSE, blockSize = 5000,
-                   chrsPerChunk = 1) {
+                   chrsPerChunk = 1, candidates_index = NULL) {
     
     stopifnot(is(bs, "BSseq"))
     
@@ -461,7 +461,7 @@ dmrseq <- function(bs, testCovariate, adjustCovariate = NULL, cutoff = 0.1,
                     smooth = smooth, bpSpan = bpSpan, verbose = verbose, 
                     parallel = parallel, block = block, blockSize = blockSize,
                     chrsPerChunk = chrsPerChunk, fact = fact,
-                    adjustCovariate = adjustCovariate)
+                    adjustCovariate = adjustCovariate, candidates_index = candidates_index)
    
     # check that at least one candidate region was found; if there were none 
     # there is no need to go on to compute permutation tests...
