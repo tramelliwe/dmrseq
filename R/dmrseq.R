@@ -633,7 +633,7 @@ dmrseq <- function(bs, testCovariate, adjustCovariate = NULL, cutoff = 0.1,
                                    verbose = verbose, parallel = parallel,
                                    block = block, blockSize = blockSize,
                                    chrsPerChunk = chrsPerChunk, fact = fact,
-                                   adjustCovariate = adjustCovariate)
+                                   adjustCovariate = adjustCovariate, candidates_index = candidates_index)
             
             if (verbose) {
               message("* ", j, " out of ", ncol(perms), 

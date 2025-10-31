@@ -311,6 +311,9 @@ bumphunt <- function(bs,
         } 
       }
       
+      tab$relative_indexStart <- tab$indexStart
+      tab$relative_indexEnd <- tab$indexEnd
+      
       chrs <- unique(as.character(seqnames(bs)))
       chrlengths <- table(seqnames(bs))
       chrlengths <- chrlengths[chrs]
@@ -621,7 +624,25 @@ regionScanner <- function(meth.mat = meth.mat, cov.mat = cov.mat, pos = pos,
     }
   
   } else{
-    Indexes <- candidates_index
+    
+    chromosome <- unique(chr)
+    candidates <- candidates_index[seqnames(candidates_index)==chromosome]
+    
+    candidates <- candidates[order(candidates$relative_indexStart)]
+    
+    ranges_list <- lapply(seq_along(candidates), function(i){
+      start_i <- candidates$relative_indexStart[i]
+      end_i <- candidates$relative_indexEnd[i]
+      seq(start_i, end_i)
+    })
+    
+    Indexes <- ranges_list
+    
+    if (length(Indexes) == 0) {
+      message(paste0("No user-supplied candidates in chromosome ", chromosome,"."))
+      return(NULL)
+    }
+    
   }
   
     asin.gls.cov <- function(ix, design, coeff, 
